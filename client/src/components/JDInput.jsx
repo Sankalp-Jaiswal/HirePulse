@@ -1,15 +1,15 @@
 const JDInput = ({ setJD }) => (
-  <div className="bg-white p-4 rounded shadow">
-    <label className="block font-medium mb-2">
+  <div className="bg-gray-900/60 backdrop-blur-md p-8 rounded-2xl shadow-xl border border-gray-800/50 hover:border-purple-500/50 transition-all duration-300">
+    <label className="block text-white font-semibold text-lg mb-4">
       Job Description
     </label>
     <textarea
       rows="6"
-      className="w-full border rounded p-2 focus:outline-none focus:ring"
+      className="w-full bg-gray-800/50 border border-gray-700/50 rounded-xl p-4 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-purple-500/50 transition-all duration-300 resize-none"
       placeholder="Paste job description here..."
       onChange={(e) => setJD(e.target.value)}
     />
   </div>
 );
-
+ 
 export default JDInput;

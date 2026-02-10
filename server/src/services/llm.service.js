@@ -29,44 +29,72 @@ const client = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 // Helper function to handle the wait
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 
-export const evaluateResumeWithJD = async (jobDescription, resumeText, retryCount = 0) => {
+export const evaluateResumeWithJD = async (
+  jobDescription,
+  resumeText,
+  retryCount = 0,
+) => {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error("GEMINI_API_KEY missing in .env");
   }
 
   const prompt = `
-    You are an ATS system. Compare the Resume against the Job Description.
-    
-    JD: ${jobDescription}
-    Resume: ${resumeText}
-    
-    Return a JSON object with "score" (0-100) and "reason" (brief explanation).
+    You are an ATS system.
+
+Job Description:
+${jobDescription}
+
+Candidate Resume:
+${resumeText}
+
+STRICT RULES:
+- Return ONLY ONE JSON OBJECT
+- Do NOT return an array
+- Do NOT add explanations
+
+Format:
+{
+  "score": number(0-100),
+  "reason": string(justification for the score, max 2 sentences)
+}
   `;
 
   try {
     // Using 'gemini-2.0-flash' which is the current stable-ish identifier
-    const model = client.getGenerativeModel({ 
+    const model = client.getGenerativeModel({
       model: "gemini-2.0-flash-lite",
-      generationConfig: { responseMimeType: "application/json" }
+      generationConfig: { responseMimeType: "application/json" },
     });
 
     const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    let text = result.response.text();
 
-    return JSON.parse(text);
+    text = text.replace(/```json|```/g, "").trim();
 
+    let parsed = JSON.parse(text);
+
+    // 🔥 HARD SAFETY
+    if (Array.isArray(parsed)) {
+      parsed = parsed[0];
+    }
+
+    
+    return {
+      score: Number(parsed.score) || 0,
+      reason: String(parsed.reason || "No justification provided"),
+    };
   } catch (error) {
     // Check if the error is a Rate Limit (429)
     if (error.message?.includes("429") && retryCount < 2) {
       console.warn(`Quota hit. Retrying in 25s... (Attempt ${retryCount + 1})`);
-      await sleep(25000); 
+      await sleep(25000);
       return evaluateResumeWithJD(jobDescription, resumeText, retryCount + 1);
     }
 
     console.error("Gemini API error:", error.message);
     return {
       score: 0,
-      reason: "Evaluation failed due to API limits or connectivity."
+      reason: "Evaluation failed due to API limits or connectivity.",
     };
   }
 };

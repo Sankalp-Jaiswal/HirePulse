@@ -15,13 +15,13 @@ const Login = () => {
     const interval = setInterval(() => {
       setCurrentWord((prev) => (prev + 1) % dynamicWords.length);
     }, 2500);
-    
+
     const handleScroll = () => {
       setScrolled(window.scrollY > 50);
     };
-    
+
     window.addEventListener('scroll', handleScroll);
-    
+
     return () => {
       clearInterval(interval);
       window.removeEventListener('scroll', handleScroll);
@@ -48,9 +48,6 @@ const Login = () => {
               <a href="#pricing" className="text-gray-300 hover:text-white transition-colors">Pricing</a>
               <a href="#contact" className="text-gray-300 hover:text-white transition-colors">Contact</a>
             </div> */}
-            <a href="#login" className="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:shadow-lg transform hover:scale-105 transition-all duration-300">
-              Get Started
-            </a>
           </div>
         </div>
       </nav>
@@ -107,9 +104,7 @@ const Login = () => {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-              <a href="#login" className="px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-semibold hover:shadow-2xl transform hover:scale-105 transition-all duration-300">
-                Start Free Trial
-              </a>
+              {/* Login is now in the bottom section */}
               {/* <a href="#demo" className="px-8 py-4 bg-gray-800/50 backdrop-blur-sm text-white rounded-xl font-semibold border border-gray-700 hover:bg-gray-700/50 transform hover:scale-105 transition-all duration-300">
                 Watch Demo
               </a> */}

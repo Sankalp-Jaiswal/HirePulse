@@ -8,9 +8,9 @@ api.interceptors.request.use((config) => {
   const token = localStorage.getItem("google_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
-    // console.log("Auth header set:", config.headers.Authorization.substring(0, 20) + "...");
+    console.log("✓ Auth header set with token");
   } else {
-    console.log("No token found in localStorage");
+    console.warn("✗ No token found in localStorage - user may not be logged in");
   }
   return config;
 });

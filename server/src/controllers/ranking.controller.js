@@ -14,7 +14,8 @@ export const rankCandidatesController = async (req, res) => {
   } else {
     candidates = parseExcel(req.file.path);
   }
-
+  console.log(candidates);
+  
   for (const c of candidates) {
     try {
       const { buffer, contentType } = await fetchResume(c.Resume_Link);

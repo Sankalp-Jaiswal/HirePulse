@@ -3,7 +3,7 @@ import { normalizeDriveLink } from "../utils/drive.util.js";
 
 export const fetchResume = async (link) => {
   const url = normalizeDriveLink(link);
-  console.log("Fetching resume:", { original: link, normalized: url });
+  // console.log("Fetching resume:", { original: link, normalized: url });
 
   try {
     const res = await axios.get(url, {
@@ -12,7 +12,7 @@ export const fetchResume = async (link) => {
     });
 
     const contentType = res.headers["content-type"] || "";
-    console.log("Resume response status:", res.status, "content-type:", contentType);
+    // console.log("Resume response status:", res.status, "content-type:", contentType);
 
     if (res.status !== 200) {
       throw new Error(`Failed to fetch resume: ${res.status} ${res.statusText || ""}`);
