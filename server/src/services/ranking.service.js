@@ -7,7 +7,7 @@ export const rankCandidates = async (jd, candidates) => {
     const result = await evaluateResumeWithJD(jd, c.resumeText);
     evaluated.push({ ...c, ...result });
   }
-
+  
   return evaluated
     .sort((a, b) => b.score - a.score)
     .slice(0, 15)

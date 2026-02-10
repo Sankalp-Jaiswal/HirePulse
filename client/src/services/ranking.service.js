@@ -12,7 +12,6 @@ export const rankCandidates = async ({ jd, file, sheetLink }) => {
   console.log("Token in localStorage:", token ? "✓ Exists" : "✗ Missing");
   
   const res = await api.post("/api/rank", formData);
-  console.log(res.data.data);
   
-  return res.data.data;
+  return res.data;
 };

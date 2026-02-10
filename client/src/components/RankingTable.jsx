@@ -17,7 +17,7 @@ const RankingTable = ({ data }) => (
         {data.map((c) => (
           <tr key={c.rank} className="border-t">
             <td className="p-2 font-medium">{c.rank}</td>
-            <td className="p-2">{c.name}</td>
+            <td className="p-2">{c.Name}</td>
             <td className="p-2">
               <span className="font-semibold">{c.score}</span>/100
             </td>

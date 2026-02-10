@@ -3,11 +3,13 @@ import AppRoutes from "./routes/AppRoutes";
 import { AuthProvider } from "./context/AuthContext";
 
 const App = () => (
-  <AuthProvider>
-    <BrowserRouter>
-      <AppRoutes />
-    </BrowserRouter>
-  </AuthProvider>
+  <div className="min-h-screen bg-gray-900">
+    <AuthProvider>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </AuthProvider>
+  </div>
 );
 
 export default App;

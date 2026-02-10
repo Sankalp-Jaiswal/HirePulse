@@ -1,9 +1,7 @@
+import 'dotenv/config';
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import rankingRoutes from "./routes/ranking.routes.js";
-
-dotenv.config();
 
 const app = express();
 

@@ -613,44 +613,24 @@ const Login = () => {
             rgba(255,255,255,0.08) 0px,
             rgba(255,255,255,0.08) 2px,
             transparent 2px,
-            transparent 80px
+            transparent 200px
           ),
           repeating-linear-gradient(
             -45deg,
             rgba(255,255,255,0.08) 0px,
             rgba(255,255,255,0.08) 2px,
             transparent 2px,
-            transparent 80px
+            transparent 200px
           );
         }
 
         .hero-bg {
-          background: linear-gradient(135deg, #1e3a8a 0%, #7c3aed 100%);
+          background: #0c1425; /* plain dark */
           position: relative;
           overflow: hidden;
-        }
-
-        .hero-bg::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 200%;
-          height: 200%;
-          background-image: repeating-linear-gradient(
-            45deg,
-            rgba(255,255,255,0.08) 0px,
-            rgba(255,255,255,0.08) 2px,
-            transparent 2px,
-            transparent 80px
-          ),
-          repeating-linear-gradient(
-            -45deg,
-            rgba(255,255,255,0.08) 0px,
-            rgba(255,255,255,0.08) 2px,
-            transparent 2px,
-            transparent 80px
-          );
+          padding: 4rem 2rem;
+          border-radius: 1rem;
+          margin: 2rem 0;
         }
       `}</style>
     </div>
@@ -658,3 +638,24 @@ const Login = () => {
 };
 
 export default Login;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

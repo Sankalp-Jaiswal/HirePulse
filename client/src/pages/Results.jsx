@@ -1,7 +1,10 @@
 import { useLocation, Navigate } from "react-router-dom";
+import RankingTable from "../components/RankingTable";
 
 const Results = () => {
-  const { state } = useLocation();
+  const { state } = useLocation(); 
+  console.log(state);
+  
 
   if (!state) return <Navigate to="/dashboard" replace />;
 
