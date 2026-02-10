@@ -9,6 +9,10 @@ const Login = () => {
   const [scrolled, setScrolled] = useState(false);
   
   const dynamicWords = ["Intelligent", "Efficient", "Accurate", "Smart"];
+  const handleLoginSuccess = (res) => {
+    localStorage.setItem("google_token", res.credential);
+    window.location.href = "/dashboard";
+  };
 
   useEffect(() => {
     setIsVisible(true);
@@ -41,6 +45,16 @@ const Login = () => {
                 <span className="text-white font-bold text-xl">H</span>
               </div>
               <span className="text-2xl font-bold text-white">HirePulse</span>
+            </div>
+            <div className="hidden md:block">
+              <GoogleLogin
+                onSuccess={handleLoginSuccess}
+                onError={() => alert("Login failed")}
+                theme="filled_black"
+                size="medium"
+                text="signin_with"
+                shape="pill"
+              />
             </div>
             {/* <div className="hidden md:flex items-center space-x-8">
               <a href="#features" className="text-gray-300 hover:text-white transition-colors">Features</a>
@@ -366,10 +380,7 @@ const Login = () => {
               
               <div className="flex justify-center transform transition-transform duration-300 hover:scale-105 mb-6">
                 <GoogleLogin
-                  onSuccess={(res) => {
-                    localStorage.setItem("google_token", res.credential);
-                    window.location.href = "/dashboard";
-                  }}
+                  onSuccess={handleLoginSuccess}
                   onError={() => alert("Login failed")}
                   theme="filled_black"
                   size="large"
