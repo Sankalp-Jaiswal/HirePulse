@@ -4,7 +4,7 @@ import RankingTable from "../components/RankingTable";
 
 const Results = () => {
   const { state } = useLocation();
-  console.log(state);
+  // console.log(state);
 
 
   if (!state) return <Navigate to="/dashboard" replace />;

@@ -9,9 +9,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/api/rank", rankingRoutes);
-app.get("/", (req, res) => {
-  res.send("Server is running successfully 🚀");
-});
+
 
 
 export default app;

@@ -6,6 +6,8 @@ import { rankCandidates } from "../services/ranking.service.js";
 
 export const rankCandidatesController = async (req, res) => {
   const { jobDescription, sheetLink } = req.body;
+  console.log(jobDescription);
+  
 
   let candidates = [];
 
@@ -14,7 +16,6 @@ export const rankCandidatesController = async (req, res) => {
   } else {
     candidates = parseExcel(req.file.path);
   }
-  console.log(candidates);
   
   for (const c of candidates) {
     try {

@@ -9,7 +9,7 @@ export const rankCandidates = async ({ jd, file, sheetLink }) => {
   if (sheetLink) formData.append("sheetLink", sheetLink);
 
   const token = localStorage.getItem("google_token");
-  console.log("Token in localStorage:", token ? "✓ Exists" : "✗ Missing");
+  // console.log("Token in localStorage:", token ? "✓ Exists" : "✗ Missing");
   
   const res = await api.post("/api/rank", formData);
   
