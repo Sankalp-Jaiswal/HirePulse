@@ -8,6 +8,15 @@ const Results = () => {
 
 
   if (!state) return <Navigate to="/dashboard" replace />;
+  if (!Array.isArray(state)) {
+    return (
+      <Layout>
+        <div className="text-red-300 bg-red-900/30 border border-red-700/40 rounded-lg p-4">
+          Failed to load ranking results. Please try again.
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

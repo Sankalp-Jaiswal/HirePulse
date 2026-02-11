@@ -1,7 +1,6 @@
 import { verifyGoogleToken } from "../auth/googleAuth.js";
 
 export const authMiddleware = async (req, res, next) => {
-  res.send("Server is running successfully 🚀");
   try {
     const token = req.headers.authorization?.split(" ")[1];
     // console.log("Auth header:", req.headers.authorization?.substring(0, 20) + "...");
