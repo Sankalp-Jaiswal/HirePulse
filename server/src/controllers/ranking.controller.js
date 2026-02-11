@@ -6,7 +6,6 @@ import { rankCandidates } from "../services/ranking.service.js";
 
 export const rankCandidatesController = async (req, res) => {
   const { jobDescription, sheetLink } = req.body;
-  console.log(jobDescription);
   
 
   let candidates = [];
@@ -36,7 +35,6 @@ export const rankCandidatesController = async (req, res) => {
   }
 
   const ranked = await rankCandidates(jobDescription, candidates);
-  console.log(ranked);
-  
+  console.log("Ranking completed. Sample ranked candidate:", ranked[0]);
   res.json(ranked);
 };
