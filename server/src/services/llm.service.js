@@ -62,7 +62,7 @@ Format:
   try {
     // Using 'gemini-2.0-flash' which is the current stable-ish identifier
     const model = client.getGenerativeModel({
-      model: "gemini-2.0-flash-lite",
+      model: "gemini-2.5-flash",
       generationConfig: { responseMimeType: "application/json" },
     });
 
@@ -84,13 +84,6 @@ Format:
       reason: String(parsed.reason || "No justification provided"),
     };
   } catch (error) {
-    // Check if the error is a Rate Limit (429)
-    if (error.message?.includes("429") && retryCount < 2) {
-      console.warn(`Quota hit. Retrying in 25s... (Attempt ${retryCount + 1})`);
-      await sleep(25000);
-      return evaluateResumeWithJD(jobDescription, resumeText, retryCount + 1);
-    }
-
     console.error("Gemini API error:", error.message);
     return {
       score: 0,
