@@ -37,6 +37,10 @@ export const evaluateResumeWithJD = async (
   if (!process.env.GEMINI_API_KEY) {
     throw new Error("GEMINI_API_KEY missing in .env");
   }
+  if (!process.env.GEMINI_API_KEY) {
+  return res.status(500).json({ error: "API KEY NOT FOUND" });
+}
+
 
   const prompt = `
     You are an ATS system.
