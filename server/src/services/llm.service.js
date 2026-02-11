@@ -66,7 +66,7 @@ Format:
   try {
     // Using 'gemini-2.0-flash' which is the current stable-ish identifier
     const model = client.getGenerativeModel({
-      model: "gemini-2.0-pro",
+      model: "gemini-2.5-flash",
       generationConfig: { responseMimeType: "application/json" },
     });
 
