@@ -35,6 +35,6 @@ export const rankCandidatesController = async (req, res) => {
   }
 
   const ranked = await rankCandidates(jobDescription, candidates);
-  console.log("Ranking completed. Sample ranked candidate:", ranked[0]);
+  console.log("Ranking completed. Sample ranked candidate:", ranked[0].score);
   res.json(ranked);
 };
