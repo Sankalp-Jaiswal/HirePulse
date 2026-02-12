@@ -1,0 +1,41 @@
+start	end	text
+0	8000	I have to present my project, so basically I have made up something called e-commerce,
+8000	17000	it is similar to the blanket you know, so let me show you the project, it is not working properly
+17000	27000	since I have made it a long ago and technology is got a little bit out of order, so first I have to log out here.
+28000	33000	Yeah, you can see that there is an option to either log in or register.
+33000	50000	So, starting from the first, let me register myself, also, yeah.
+51000	57000	So, as you can see, it is already as user already exists.
+57000	65000	So, let me enter it again in the login section, yeah, I have login successfully.
+65000	72000	So, here we should get the product, but I do not know due to some bugs, I am not getting the product.
+72000	77000	So, here you can see I am getting all the product in the search section.
+77000	84000	So, suppose if I have to buy this, I will add it to the cart, I will add this to the cart here, you can see,
+84000	88000	there are the two items which I added in the cart.
+88000	94000	Now, coming to the payment, when I click on the proceed, I will get the option to add address
+94000	102000	or select any address which I have entered previously, then after that here will be the total summary of the cart.
+102000	106000	And now, if I can pay online either or cash on delivery.
+106000	111000	So, if I select transaction delivery, it will be order successfully.
+111000	122000	Not only that, if I somehow go to the, sorry, yeah, here you can see.
+122000	129000	Like if I added product in the cart and pay on select to pay online, I will get the functionality.
+130000	134000	To pay either by card or card or UPI.
+134000	141000	Coming to the text stack I used, I have made it on the month that stack.
+141000	152000	So, like react and a tailwind CSS for the front end and express and more JS for the back end, yeah.
+153000	157000	And I also used MongoDB as a database.
+157000	160000	Coming to the functionality, yeah.
+160000	171000	So, here you can see, there is a main JS, I have containered all the functionality inside a wrapper.
+171000	176000	And I have also used to store for the notification.
+176000	189000	I have made the admin base access that is admin will gets option to add product or delayed product and dashboard for the, you have seen that as podium.
+189000	190000	Okay.
+190000	196000	There are multiple routes like multiple pages that come under the routes.
+196000	202000	That product, this play product admin, the product admin will get the functionality to add the product.
+202000	205000	It's detailed and it's photo.
+205000	207000	My data has been already lost.
+207000	215000	So, I have no images to show right here, but I have done it in the past.
+215000	217000	So, this was my all product.
+217000	225000	I have made the whole user authentication and user authorization.
+226000	228000	Forward the term user authorization.
+228000	239000	So, it is a role based access e-commerce platform, which I have made by myself to help from some little bit help from the guy.
+239000	241000	This is my saved address.
+241000	243000	It was all about my product.
+243000	244000	Hope you liked it.
+244000	248000	If you liked it, please revert with a simple feedback about it.
+248000	249000	Thank you.

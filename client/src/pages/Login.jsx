@@ -46,7 +46,7 @@ const Login = () => {
               </div>
               <span className="text-2xl font-bold text-white">HirePulse</span>
             </div>
-            <div className="hidden md:block">
+            <div className="block">
               <GoogleLogin
                 onSuccess={handleLoginSuccess}
                 onError={() => alert("Login failed")}

@@ -7,11 +7,11 @@ const RankingTable = ({ data }) => (
     <table className="w-full border-collapse">
       <thead>
         <tr className="bg-gray-800 text-white text-left">
-          <th className="p-4 border-b border-gray-700">Rank</th>
-          <th className="p-4 border-b border-gray-700">Name</th>
-          <th className="p-4 border-b border-gray-700">Score</th>
-          <th className="p-4 border-b border-gray-700">Reason</th>
-          <th className="p-4 border-b border-gray-700">Resume</th>
+          <th className="p-4 border-b border-gray-700 text-center">Rank</th>
+          <th className="p-4 border-b border-gray-700 text-center">Name</th>
+          <th className="p-4 border-b border-gray-700 text-center">Score</th>
+          <th className="p-4 border-b border-gray-700 text-center">Reason</th>
+          <th className="p-4 border-b border-gray-700 text-center">Resume</th>
         </tr>
       </thead>
       <tbody>

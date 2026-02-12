@@ -3,10 +3,10 @@ import { parseGoogleSheet } from "../services/googleSheet.service.js";
 import { fetchResume } from "../services/resume.service.js";
 import { extractText } from "../services/parser.service.js";
 import { rankCandidates } from "../services/ranking.service.js";
+import { transcribeDriveVideo } from "../services/transcribe.service.js";
 
 export const rankCandidatesController = async (req, res) => {
   const { jobDescription, sheetLink } = req.body;
-  
 
   let candidates = [];
 
@@ -15,22 +15,57 @@ export const rankCandidatesController = async (req, res) => {
   } else {
     candidates = parseExcel(req.file.path);
   }
-  
-  for (const c of candidates) {
+
+  for (const [index, c] of candidates.entries()) {
+    const candidateLabel =
+      c.Name || c.Email || c.Resume_Link || `candidate_${index + 1}`;
+    c.videoTranscript = "";
+    c.resumeText = "";
+
+    // if (!c.Demo_Video_Link) {
+    //   console.log(
+    //     `[Transcript] [${candidateLabel}] No Demo_Video_Link provided; skipping.`,
+    //   );
+    // } else {
+    //   try {
+    //     let transcript = "";
+    //     transcript = await transcribeDriveVideo(c.Demo_Video_Link);
+    //     c.videoTranscript = transcript;
+
+    //   } catch (err) {
+    //     console.error(
+    //       `[Transcript] [${candidateLabel}] Failed:`,
+    //       err?.message || String(err),
+    //     );
+    //   }
+    // }
+
+    if (!c.Resume_Link) {
+      console.log("Skipping resume parsing, missing Resume_Link");
+      continue;
+    }
+
     try {
       const { buffer, contentType } = await fetchResume(c.Resume_Link);
 
       // Accept PDF, Word docs, and octet-stream (Google Drive exports)
       const ct = (contentType || "").toLowerCase();
-      if (ct.includes("pdf") || ct.includes("officedocument") || ct.includes("msword") || ct.includes("word") || ct.includes("octet-stream")) {
+      if (
+        ct.includes("pdf") ||
+        ct.includes("officedocument") ||
+        ct.includes("msword") ||
+        ct.includes("word") ||
+        ct.includes("octet-stream")
+      ) {
         c.resumeText = await extractText(buffer);
       } else {
-        console.log("Skipping resume parsing, unsupported content-type:", contentType);
-        c.resumeText = "";
+        console.log(
+          "Skipping resume parsing, unsupported content-type:",
+          contentType,
+        );
       }
     } catch (err) {
       console.error("Resume parsing failed:", err.message);
-      c.resumeText = "";
     }
   }
 

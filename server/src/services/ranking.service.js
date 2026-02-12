@@ -5,6 +5,7 @@ export const rankCandidates = async (jd, candidates) => {
 
   for (const c of candidates) {
     const result = await evaluateResumeWithJD(jd, c.resumeText);
+    // const result = await evaluateResumeWithJD(jd, c.resumeText, c.videoTranscript);
     evaluated.push({ ...c, ...result });
   }
   

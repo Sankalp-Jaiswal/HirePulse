@@ -1,0 +1,122 @@
+WEBVTT
+
+00:00.000 --> 00:08.000
+I have to present my project, so basically I have made up something called e-commerce,
+
+00:08.000 --> 00:17.000
+it is similar to the blanket you know, so let me show you the project, it is not working properly
+
+00:17.000 --> 00:27.000
+since I have made it a long ago and technology is got a little bit out of order, so first I have to log out here.
+
+00:28.000 --> 00:33.000
+Yeah, you can see that there is an option to either log in or register.
+
+00:33.000 --> 00:50.000
+So, starting from the first, let me register myself, also, yeah.
+
+00:51.000 --> 00:57.000
+So, as you can see, it is already as user already exists.
+
+00:57.000 --> 01:05.000
+So, let me enter it again in the login section, yeah, I have login successfully.
+
+01:05.000 --> 01:12.000
+So, here we should get the product, but I do not know due to some bugs, I am not getting the product.
+
+01:12.000 --> 01:17.000
+So, here you can see I am getting all the product in the search section.
+
+01:17.000 --> 01:24.000
+So, suppose if I have to buy this, I will add it to the cart, I will add this to the cart here, you can see,
+
+01:24.000 --> 01:28.000
+there are the two items which I added in the cart.
+
+01:28.000 --> 01:34.000
+Now, coming to the payment, when I click on the proceed, I will get the option to add address
+
+01:34.000 --> 01:42.000
+or select any address which I have entered previously, then after that here will be the total summary of the cart.
+
+01:42.000 --> 01:46.000
+And now, if I can pay online either or cash on delivery.
+
+01:46.000 --> 01:51.000
+So, if I select transaction delivery, it will be order successfully.
+
+01:51.000 --> 02:02.000
+Not only that, if I somehow go to the, sorry, yeah, here you can see.
+
+02:02.000 --> 02:09.000
+Like if I added product in the cart and pay on select to pay online, I will get the functionality.
+
+02:10.000 --> 02:14.000
+To pay either by card or card or UPI.
+
+02:14.000 --> 02:21.000
+Coming to the text stack I used, I have made it on the month that stack.
+
+02:21.000 --> 02:32.000
+So, like react and a tailwind CSS for the front end and express and more JS for the back end, yeah.
+
+02:33.000 --> 02:37.000
+And I also used MongoDB as a database.
+
+02:37.000 --> 02:40.000
+Coming to the functionality, yeah.
+
+02:40.000 --> 02:51.000
+So, here you can see, there is a main JS, I have containered all the functionality inside a wrapper.
+
+02:51.000 --> 02:56.000
+And I have also used to store for the notification.
+
+02:56.000 --> 03:09.000
+I have made the admin base access that is admin will gets option to add product or delayed product and dashboard for the, you have seen that as podium.
+
+03:09.000 --> 03:10.000
+Okay.
+
+03:10.000 --> 03:16.000
+There are multiple routes like multiple pages that come under the routes.
+
+03:16.000 --> 03:22.000
+That product, this play product admin, the product admin will get the functionality to add the product.
+
+03:22.000 --> 03:25.000
+It's detailed and it's photo.
+
+03:25.000 --> 03:27.000
+My data has been already lost.
+
+03:27.000 --> 03:35.000
+So, I have no images to show right here, but I have done it in the past.
+
+03:35.000 --> 03:37.000
+So, this was my all product.
+
+03:37.000 --> 03:45.000
+I have made the whole user authentication and user authorization.
+
+03:46.000 --> 03:48.000
+Forward the term user authorization.
+
+03:48.000 --> 03:59.000
+So, it is a role based access e-commerce platform, which I have made by myself to help from some little bit help from the guy.
+
+03:59.000 --> 04:01.000
+This is my saved address.
+
+04:01.000 --> 04:03.000
+It was all about my product.
+
+04:03.000 --> 04:04.000
+Hope you liked it.
+
+04:04.000 --> 04:08.000
+If you liked it, please revert with a simple feedback about it.
+
+04:08.000 --> 04:09.000
+Thank you.
+
