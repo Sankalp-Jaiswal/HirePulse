@@ -8,7 +8,7 @@ import fetch from "node-fetch";
 
 const res = await fetch("https://ipapi.co/json/");
 const data = await res.json();
-console.log("Server Location:", data);
+console.log("Server Location:", data.country_name);
 
 
 export const rankCandidatesController = async (req, res) => {
