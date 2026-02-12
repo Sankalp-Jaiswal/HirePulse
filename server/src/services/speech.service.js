@@ -1,70 +1,45 @@
 import fs from "fs";
 import path from "path";
 import axios from "axios";
+import http from "http";
+import https from "https";
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegPath from "ffmpeg-static";
-import { normalizeDriveLink } from "../utils/drive.util.js";
+import { createClient } from "@deepgram/sdk";
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 
-import { spawn } from "child_process";
+const deepgram = createClient(process.env.DEEPGRAM_API_KEY);
 
-export const transcribeAudio = (audioPath) => {
-  return new Promise((resolve, reject) => {
-    const outputDir = path.dirname(audioPath);
-    const baseName = path.basename(audioPath, ".wav");
+const driveHttpClient = axios.create({
+  timeout: 20000,
+  responseType: "stream",
+  httpAgent: new http.Agent({ keepAlive: true, maxSockets: 10 }),
+  httpsAgent: new https.Agent({ keepAlive: true, maxSockets: 10 }),
+});
 
-    const ffmpegPath =
-      "C:\\Users\\ASUS\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.0.1-full_build\\bin";
-
-    const env = {
-      ...process.env,
-      PATH: `${process.env.PATH};${ffmpegPath}`
-    };
-
-    const processWhisper = spawn(
-      "C:\\Users\\ASUS\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
-      [
-        "-m",
-        "whisper",
-        audioPath,
-        "--model",
-        "base",
-        "--output_format",
-        "txt",
-        "--output_dir",
-        outputDir
-      ],
-      { env }
-    );
-
-    processWhisper.stderr.on("data", (data) => {
-      console.error(`Whisper Error: ${data}`);
+export const transcribeAudio = async (audioPath) => {
+  try {
+    const audioBuffer = fs.readFileSync(audioPath);
+    const response = await deepgram.listen.prerecorded.transcribeFile(audioBuffer, {
+      model: "nova-2",
+      smart_format: true,
     });
 
-    processWhisper.on("close", (code) => {
-      if (code !== 0) {
-        return reject(new Error(`Whisper exited with code ${code}`));
-      }
+    if (!response?.result) {
+      throw new Error("Deepgram returned empty result");
+    }
 
-      const outputTxtPath = path.join(outputDir, `${baseName}.txt`);
-
-      if (!fs.existsSync(outputTxtPath)) {
-        return reject(new Error("Transcript file not found"));
-      }
-
-      const transcript = fs.readFileSync(outputTxtPath, "utf-8");
-      resolve(transcript.trim());
-    });
-  });
+    return response.result.results.channels[0].alternatives[0].transcript;
+  } catch (error) {
+    console.error("Deepgram transcription failed:", error.message || error);
+    return "";
+  }
 };
 
-
-
-export const extractAudioFromVideo = (videoPath) => {
-  return new Promise((resolve, reject) => {
+export const extractAudioFromVideo = (videoPath) =>
+  new Promise((resolve, reject) => {
     const audioPath = videoPath.replace(".mp4", ".wav");
-
     ffmpeg(videoPath)
       .audioChannels(1)
       .audioFrequency(16000)
@@ -73,7 +48,6 @@ export const extractAudioFromVideo = (videoPath) => {
       .on("end", () => resolve(audioPath))
       .on("error", reject);
   });
-};
 
 export const downloadDriveVideo = async (driveUrl) => {
   try {
@@ -81,39 +55,28 @@ export const downloadDriveVideo = async (driveUrl) => {
       throw new Error("GOOGLE_API_KEY missing");
     }
 
-    const fileIdMatch = driveUrl.match(/[-\w]{25,}/);
+    const fileIdMatch = String(driveUrl || "").match(/[-\w]{25,}/);
     if (!fileIdMatch) {
       throw new Error("Invalid Drive link");
     }
 
     const fileId = fileIdMatch[0];
+    const downloadUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${process.env.GOOGLE_API_KEY}`;
 
-    const downloadUrl =
-      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${process.env.GOOGLE_API_KEY}`;
+    const outputDir = path.join("uploads", "audio");
+    fs.mkdirSync(outputDir, { recursive: true });
+    const outputPath = path.join(outputDir, `video-${Date.now()}.mp4`);
 
-    const outputPath = path.join(
-      "uploads/audio",
-      `video-${Date.now()}.mp4`
-    );
-
-    const response = await axios({
-      method: "GET",
-      url: downloadUrl,
-      responseType: "stream"
-    });
-
+    const response = await driveHttpClient.get(downloadUrl);
     const writer = fs.createWriteStream(outputPath);
     response.data.pipe(writer);
 
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       writer.on("finish", () => resolve(outputPath));
       writer.on("error", reject);
     });
-
   } catch (error) {
     console.error("Drive API download failed:", error.response?.data || error.message);
     throw error;
   }
 };
-
-

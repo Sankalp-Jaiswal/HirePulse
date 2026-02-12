@@ -1,177 +1,235 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleAIFileManager } from "@google/generative-ai/server";
+import fs from "fs/promises";
+import { downloadDriveVideo, extractAudioFromVideo } from "./speech.service.js";
 
 const client = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const fileManager = new GoogleAIFileManager(process.env.GEMINI_API_KEY);
+const audioScoreCache = new Map();
 
-/**
- * Summarizes resume text to extract only relevant information
- * This reduces token count and speeds up processing
- */
-const extractRelevantResumeInfo = (resumeText, jobDescription) => {
-  // Extract key sections more efficiently
-  const lines = resumeText.split('\n').filter(line => line.trim());
-  
-  // Focus on skills, experience, education - ignore verbose descriptions
+const resumeModel = client.getGenerativeModel({
+  model: "gemini-2.0-flash",
+  generationConfig: {
+    responseMimeType: "application/json",
+    temperature: 0.1,
+    maxOutputTokens: 100,
+    topP: 0.8,
+    topK: 20,
+  },
+});
+
+const audioModel = client.getGenerativeModel({
+  model: "gemini-2.0-flash",
+  generationConfig: {
+    responseMimeType: "application/json",
+    temperature: 0.1,
+    maxOutputTokens: 80,
+  },
+});
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const extractRelevantResumeInfo = (resumeText) => {
+  const lines = String(resumeText || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
   const relevantSections = {
     skills: [],
     experience: [],
-    education: []
+    education: [],
   };
-  
+
   let currentSection = null;
-  
   for (const line of lines) {
     const lower = line.toLowerCase();
-    
-    // Detect section headers
-    if (lower.includes('skill') || lower.includes('technical')) {
-      currentSection = 'skills';
-      continue;
-    } else if (lower.includes('experience') || lower.includes('work') || lower.includes('employment')) {
-      currentSection = 'experience';
-      continue;
-    } else if (lower.includes('education') || lower.includes('qualification')) {
-      currentSection = 'education';
+    if (lower.includes("skill") || lower.includes("technical")) {
+      currentSection = "skills";
       continue;
     }
-    
-    // Add content to appropriate section (limit length)
+    if (
+      lower.includes("experience") ||
+      lower.includes("work") ||
+      lower.includes("employment")
+    ) {
+      currentSection = "experience";
+      continue;
+    }
+    if (lower.includes("education") || lower.includes("qualification")) {
+      currentSection = "education";
+      continue;
+    }
     if (currentSection && line.length > 5) {
       relevantSections[currentSection].push(line);
     }
   }
-  
-  // Build condensed resume (max 500 words)
-  let condensed = '';
-  
+
+  let condensed = "";
   if (relevantSections.skills.length > 0) {
-    condensed += 'Skills: ' + relevantSections.skills.slice(0, 10).join(', ') + '\n\n';
+    condensed += `Skills: ${relevantSections.skills.slice(0, 10).join(", ")}\n\n`;
   }
-  
   if (relevantSections.experience.length > 0) {
-    condensed += 'Experience: ' + relevantSections.experience.slice(0, 15).join(' | ') + '\n\n';
+    condensed += `Experience: ${relevantSections.experience
+      .slice(0, 15)
+      .join(" | ")}\n\n`;
   }
-  
   if (relevantSections.education.length > 0) {
-    condensed += 'Education: ' + relevantSections.education.slice(0, 5).join(' | ');
+    condensed += `Education: ${relevantSections.education.slice(0, 5).join(" | ")}`;
   }
-  
-  // If extraction failed, take first 800 characters
+
   if (condensed.length < 100) {
-    condensed = resumeText.substring(0, 800);
+    condensed = String(resumeText || "").substring(0, 800);
   }
-  
+
   return condensed.trim();
 };
 
-/**
- * Summarizes video transcript to key points
- */
-const extractKeyTranscriptPoints = (transcript) => {
-  if (!transcript || transcript.length < 50) {
-    return transcript || "No transcript provided";
-  }
-  
-  // Take first and last portions + middle sample
-  const words = transcript.split(' ');
-  const totalWords = words.length;
-  
-  if (totalWords <= 200) {
-    return transcript;
-  }
-  
-  // Smart sampling: first 100 words, middle 50, last 50
-  const start = words.slice(0, 100).join(' ');
-  const middle = words.slice(Math.floor(totalWords / 2) - 25, Math.floor(totalWords / 2) + 25).join(' ');
-  const end = words.slice(-50).join(' ');
-  
-  return `${start}... ${middle}... ${end}`;
+const parseJsonObject = (text) => {
+  const cleaned = String(text || "").replace(/```json|```/g, "").trim();
+  const parsed = JSON.parse(cleaned);
+  return Array.isArray(parsed) ? parsed[0] : parsed;
 };
 
-/**
- * Optimized evaluation function with reduced token usage
- */
-export const evaluateResumeWithJD = async (
-  jobDescription,
-  resumeText,
-  // videoTranscript,
-  retryCount = 0,
-) => {
-  // Validation
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY missing in .env");
+const withTimeout = (promise, timeoutMs, message = "Timeout") =>
+  Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(message)), timeoutMs)),
+  ]);
+
+const analyzeAudio = async (audioPath) => {
+  const uploadResult = await fileManager.uploadFile(audioPath, {
+    mimeType: "audio/wav",
+    displayName: "Interview Audio",
+  });
+
+  let file = await fileManager.getFile(uploadResult.file.name);
+  while (file.state === "PROCESSING") {
+    await sleep(900);
+    file = await fileManager.getFile(uploadResult.file.name);
+  }
+  if (file.state !== "ACTIVE") {
+    throw new Error(`Audio file processing failed: ${file.state}`);
   }
 
-  // 🚀 OPTIMIZATION 1: Condense inputs to reduce tokens
-  const condensedResume = extractRelevantResumeInfo(resumeText, jobDescription);
-  // const condensedTranscript = extractKeyTranscriptPoints(videoTranscript);
-  
-  // Take only first 400 chars of JD (key requirements)
-  const condensedJD = jobDescription.length > 400 
-    ? jobDescription.substring(0, 400) + "..." 
-    : jobDescription;
+  const result = await withTimeout(
+    audioModel.generateContent([
+      {
+        fileData: {
+          mimeType: file.mimeType,
+          fileUri: file.uri,
+        },
+      },
+      {
+        text: 'Analyze communication quality. Return JSON only: {"audio_score": <number>(0-100), "a_reason": "<max 10 words>"}',
+      },
+    ]),
+    20000,
+    "Audio analysis timeout",
+  );
 
-  // 🚀 OPTIMIZATION 2: Simplified, directive prompt
-  // Video: ${condensedTranscript}
+  const parsed = parseJsonObject(result.response.text());
+  return {
+    score: Number(parsed.audio_score) || 0,
+    reason: String(parsed.a_reason || ""),
+  };
+};
+
+const getAudioScoreFromDriveLink = async (driveLink) => {
+  if (!driveLink) return { score: 0, reason: "" };
+  if (audioScoreCache.has(driveLink)) return audioScoreCache.get(driveLink);
+
+  let videoPath = "";
+  let audioPath = "";
+
+  try {
+    videoPath = await downloadDriveVideo(driveLink);
+    audioPath = await extractAudioFromVideo(videoPath);
+    const audioData = await analyzeAudio(audioPath);
+    audioScoreCache.set(driveLink, audioData);
+    return audioData;
+  } finally {
+    if (videoPath) {
+      await fs.unlink(videoPath).catch(() => {});
+    }
+    if (audioPath) {
+      await fs.unlink(audioPath).catch(() => {});
+    }
+  }
+};
+
+const evaluateResumeOnly = async (jobDescription, resumeText, retryCount = 0) => {
+  const condensedResume = extractRelevantResumeInfo(resumeText);
+  const jd = String(jobDescription || "");
+  const condensedJD = jd.length > 400 ? `${jd.substring(0, 400)}...` : jd;
+
   const prompt = `ATS Evaluation:
 
 JD: ${condensedJD}
 
 Resume: ${condensedResume}
 
-
-
-Score 0-100 based on: 90% resume match, 10% communication quality.
+Score 0-100 based on resume match with the job description.
 Return JSON only:
-{"score": <number>(0-100), "reason": "<max 20 words>"}`;
+{"resume_score": <number>(0-100), "reason": "<max 20 words>"}`;
 
   try {
-    // 🚀 OPTIMIZATION 3: Use faster model with optimized config
-    const model = client.getGenerativeModel({
-      model: "gemini-2.0-flash", // Faster experimental model
-      generationConfig: { 
-        responseMimeType: "application/json",
-        temperature: 0.1, // Lower = faster, more consistent
-        maxOutputTokens: 100, // Limit response length
-        topP: 0.8,
-        topK: 20
-      },
-    });
-
-    // 🚀 OPTIMIZATION 4: Set timeout to fail fast
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Timeout')), 10000) // 10s timeout
+    const result = await withTimeout(
+      resumeModel.generateContent(prompt),
+      10000,
+      "Resume analysis timeout",
     );
-    
-    const generationPromise = model.generateContent(prompt);
-    
-    const result = await Promise.race([generationPromise, timeoutPromise]);
-    
-    let text = result.response.text();
-    text = text.replace(/```json|```/g, "").trim();
-
-    let parsed = JSON.parse(text);
-
-    // Safety: Handle array responses
-    if (Array.isArray(parsed)) {
-      parsed = parsed[0];
-    }
-
+    const parsed = parseJsonObject(result.response.text());
     return {
-      score: Number(parsed.score) || 0,
-      reason: String(parsed.reason || "No justification provided").substring(0, 150), // Cap reason length
+      score: Number(parsed.resume_score) || 0,
+      reason: String(parsed.reason || "No justification provided"),
     };
-    
+  } catch (error) {
+    if (retryCount < 2 && /Timeout|429/.test(error.message || "")) {
+      await sleep(1000 * (retryCount + 1));
+      return evaluateResumeOnly(jobDescription, resumeText, retryCount + 1);
+    }
+    throw error;
+  }
+};
+
+export const evaluateResumeWithJD = async (
+  jobDescription,
+  resumeText,
+  Demo_Video_Link,
+) => {
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY missing in .env");
+  }
+
+  if (!resumeText && !Demo_Video_Link) {
+    return {
+      score: 0,
+      reason: "No resume or video data provided.",
+    };
+  }
+
+  try {
+    const [resumeData, audioData] = await Promise.all([
+      evaluateResumeOnly(jobDescription, resumeText).catch((error) => {
+        console.error("Resume scoring failed:", error.message);
+        return { score: 0, reason: "Resume scoring unavailable." };
+      }),
+      Demo_Video_Link
+        ? getAudioScoreFromDriveLink(Demo_Video_Link).catch((error) => {
+            console.error("Audio scoring failed:", error.message);
+            return { score: 0, reason: "" };
+          })
+        : Promise.resolve({ score: 0, reason: "" }),
+    ]);
+
+    const reason = `${resumeData.reason}`.trim().substring(0, 150)+` ${audioData.reason}`
+    return {
+      score: 0.7 * resumeData.score + 0.3 * audioData.score || 0,
+      reason: reason || "No justification provided",
+    };
   } catch (error) {
     console.error("Gemini API error:", error.message);
-    
-    // 🚀 OPTIMIZATION 5: Smart retry logic
-    if (retryCount < 2 && (error.message.includes('Timeout') || error.message.includes('429'))) {
-      console.log(`Retrying... Attempt ${retryCount + 1}`);
-      await new Promise(res => setTimeout(res, 1000 * (retryCount + 1))); // Exponential backoff
-      // return evaluateResumeWithJD(jobDescription, resumeText, videoTranscript, retryCount + 1);
-      return evaluateResumeWithJD(jobDescription, resumeText, retryCount + 1);
-    }
-    
     return {
       score: 0,
       reason: "Evaluation failed due to API limits or connectivity.",
@@ -179,142 +237,31 @@ Return JSON only:
   }
 };
 
-/**
- * OPTIONAL: Batch evaluation function for processing multiple candidates faster
- */
 export const batchEvaluateResumes = async (jobDescription, candidates) => {
-  // Process in parallel batches of 3 to avoid rate limits
-  const batchSize = 3;
+  const batchSize = 4;
   const results = [];
-  
+
   for (let i = 0; i < candidates.length; i += batchSize) {
     const batch = candidates.slice(i, i + batchSize);
-    const batchPromises = batch.map(candidate => 
-      evaluateResumeWithJD(jobDescription, candidate.resumeText, candidate.videoTranscript)
+    const batchPromises = batch.map((candidate) =>
+      evaluateResumeWithJD(
+        jobDescription,
+        candidate.resumeText,
+        candidate.Demo_Video_Link,
+      ),
     );
-    
+
     const batchResults = await Promise.allSettled(batchPromises);
-    results.push(...batchResults.map(r => r.status === 'fulfilled' ? r.value : { score: 0, reason: 'Failed' }));
-    
-    // Small delay between batches
+    results.push(
+      ...batchResults.map((result) =>
+        result.status === "fulfilled" ? result.value : { score: 0, reason: "Failed" },
+      ),
+    );
+
     if (i + batchSize < candidates.length) {
-      await new Promise(res => setTimeout(res, 500));
+      await sleep(350);
     }
   }
-  
+
   return results;
 };
-
-
-
-// import OpenAI from "openai";
-// import { resumeMatchPrompt } from "../prompts/resumeMatch.prompt.js";
-
-// console.log(process.env.OPENAI_API_KEY);
-
-// const openai = new OpenAI({
-//   apiKey: process.env.OPENAI_API_KEY
-// });
-
-// export const evaluateResumeWithJD = async (jd, resume) => {
-//   const prompt = resumeMatchPrompt({
-//     jobDescription: jd,
-//     resumeText: resume
-//   });
-
-//   const response = await openai.chat.completions.create({
-//     model: "gpt-4o",
-//     temperature: 0.2,
-//     messages: [{ role: "user", content: prompt }]
-//   });
-
-//   return JSON.parse(response.choices[0].message.content);
-// };
-
-
-
-
-// import { GoogleGenerativeAI } from "@google/generative-ai";
-
-// const client = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-// // Helper function to handle the wait
-// const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
-
-// export const evaluateResumeWithJD = async (
-//   jobDescription,
-//   resumeText,
-//   videoTranscript,
-//   retryCount = 0,
-// ) => {
-//   if (!process.env.GEMINI_API_KEY) {
-//     throw new Error("GEMINI_API_KEY missing in .env");
-//   }
-//   if (!process.env.GEMINI_API_KEY) {
-//     return res.status(500).json({ error: "API KEY NOT FOUND" });
-//   }
-
-//   const prompt = `
-//     You are an advanced ATS system.
-
-// Evaluate candidate based on:
-
-// 1. Resume (technical skills & experience)
-// 2. Demo video transcript (communication clarity, confidence, understanding)
-
-// Job Description:
-// ${jobDescription}
-
-// Resume:
-// ${resumeText}
-
-// Video Transcript:
-// ${videoTranscript}
-
-// Scoring Rules:
-// - 70% weight: Resume relevance
-// - 30% weight: Communication & explanation clarity
-
-// STRICT RULES:
-// - Return ONLY ONE JSON OBJECT
-// - Do NOT return an array
-// - Do NOT add explanations
-
-// Format:
-// {
-//   "score": number(0-100),
-//   "reason": string(justification for the score, max 2 sentences)
-// }
-//   `;
-
-//   try {
-//     // Using 'gemini-2.0-flash' which is the current stable-ish identifier
-//     const model = client.getGenerativeModel({
-//       model: "gemini-2.5-flash",
-//       generationConfig: { responseMimeType: "application/json" },
-//     });
-
-//     const result = await model.generateContent(prompt);
-//     let text = result.response.text();
-
-//     text = text.replace(/```json|```/g, "").trim();
-
-//     let parsed = JSON.parse(text);
-
-//     // 🔥 HARD SAFETY
-//     if (Array.isArray(parsed)) {
-//       parsed = parsed[0];
-//     }
-
-//     return {
-//       score: Number(parsed.score) || 0,
-//       reason: String(parsed.reason || "No justification provided"),
-//     };
-//   } catch (error) {
-//     console.error("Gemini API error:", error.message);
-//     return {
-//       score: 0,
-//       reason: "Evaluation failed due to API limits or connectivity.",
-//     };
-//   }
-// };
