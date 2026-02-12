@@ -6,9 +6,6 @@ import { rankCandidates } from "../services/ranking.service.js";
 import { transcribeDriveVideo } from "../services/transcribe.service.js";
 import fetch from "node-fetch";
 
-const res = await fetch("https://ipapi.co/json/");
-const data = await res.json();
-console.log(data);
 
 export const rankCandidatesController = async (req, res) => {
   const { jobDescription, sheetLink } = req.body;
