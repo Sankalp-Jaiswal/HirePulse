@@ -1,6 +1,6 @@
 import { evaluateResumeWithJD } from "./llm.service.js";
 
-const RANK_EVAL_CONCURRENCY = Number(process.env.RANK_EVAL_CONCURRENCY || 4);
+const RANK_EVAL_CONCURRENCY = Number(process.env.RANK_EVAL_CONCURRENCY || 2);
 
 const mapWithConcurrency = async (items, limit, mapper) => {
   const results = new Array(items.length);
@@ -24,7 +24,7 @@ export const rankCandidates = async (jd, candidates) => {
     const result = await evaluateResumeWithJD(
       jd,
       c.resumeText,
-      c.Demo_Video_Link,
+      c.Video,
     );
     return { ...c, ...result };
   });

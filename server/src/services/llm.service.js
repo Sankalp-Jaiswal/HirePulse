@@ -6,6 +6,9 @@ import { downloadDriveVideo, extractAudioFromVideo } from "./speech.service.js";
 const client = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const fileManager = new GoogleAIFileManager(process.env.GEMINI_API_KEY);
 const audioScoreCache = new Map();
+const GEMINI_MIN_INTERVAL_MS = Number(process.env.GEMINI_MIN_INTERVAL_MS || 1200);
+let geminiQueue = Promise.resolve();
+let lastGeminiRequestAt = 0;
 
 const resumeModel = client.getGenerativeModel({
   model: "gemini-2.0-flash",
@@ -28,6 +31,28 @@ const audioModel = client.getGenerativeModel({
 });
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const withGeminiThrottle = async (fn) => {
+  const run = async () => {
+    const elapsed = Date.now() - lastGeminiRequestAt;
+    const waitMs = Math.max(0, GEMINI_MIN_INTERVAL_MS - elapsed);
+    if (waitMs > 0) {
+      await sleep(waitMs);
+    }
+    lastGeminiRequestAt = Date.now();
+    return fn();
+  };
+
+  const next = geminiQueue.then(run, run);
+  geminiQueue = next.catch(() => {});
+  return next;
+};
+
+const isQuotaExceededError = (message) =>
+  /exceeded your current quota|plan and billing|resource_exhausted/i.test(String(message || ""));
+
+const isRetriableGeminiError = (message) =>
+  /429|too many requests|rate limit|timeout|timed out/i.test(String(message || ""));
 
 const extractRelevantResumeInfo = (resumeText) => {
   const lines = String(resumeText || "")
@@ -97,7 +122,7 @@ const withTimeout = (promise, timeoutMs, message = "Timeout") =>
     new Promise((_, reject) => setTimeout(() => reject(new Error(message)), timeoutMs)),
   ]);
 
-const analyzeAudio = async (audioPath) => {
+const analyzeAudio = async (audioPath, retryCount = 0) => {
   const uploadResult = await fileManager.uploadFile(audioPath, {
     mimeType: "audio/wav",
     displayName: "Interview Audio",
@@ -112,21 +137,37 @@ const analyzeAudio = async (audioPath) => {
     throw new Error(`Audio file processing failed: ${file.state}`);
   }
 
-  const result = await withTimeout(
-    audioModel.generateContent([
-      {
-        fileData: {
-          mimeType: file.mimeType,
-          fileUri: file.uri,
-        },
-      },
-      {
-        text: 'Analyze communication quality. Return JSON only: {"audio_score": <number>(0-100), "a_reason": "<max 10 words>"}',
-      },
-    ]),
-    20000,
-    "Audio analysis timeout",
-  );
+  let result;
+  try {
+    result = await withGeminiThrottle(() =>
+      withTimeout(
+        audioModel.generateContent([
+          {
+            fileData: {
+              mimeType: file.mimeType,
+              fileUri: file.uri,
+            },
+          },
+          {
+            text: 'Analyze communication quality. Return JSON only: {"audio_score": <number>(0-100), "a_reason": "<max 10 words>"}',
+          },
+        ]),
+        20000,
+        "Audio analysis timeout",
+      ),
+    );
+  } catch (error) {
+    const message = String(error?.message || "");
+    if (isQuotaExceededError(message)) {
+      throw new Error("Gemini quota exceeded. Check plan/billing or reduce request volume.");
+    }
+    if (retryCount < 2 && isRetriableGeminiError(message)) {
+      const backoffMs = 1500 * 2 ** retryCount;
+      await sleep(backoffMs);
+      return analyzeAudio(audioPath, retryCount + 1);
+    }
+    throw error;
+  }
 
   const parsed = parseJsonObject(result.response.text());
   return {
@@ -174,10 +215,12 @@ Return JSON only:
 {"resume_score": <number>(0-100), "reason": "<max 20 words>"}`;
 
   try {
-    const result = await withTimeout(
-      resumeModel.generateContent(prompt),
-      10000,
-      "Resume analysis timeout",
+    const result = await withGeminiThrottle(() =>
+      withTimeout(
+        resumeModel.generateContent(prompt),
+        10000,
+        "Resume analysis timeout",
+      ),
     );
     const parsed = parseJsonObject(result.response.text());
     return {
@@ -185,8 +228,13 @@ Return JSON only:
       reason: String(parsed.reason || "No justification provided"),
     };
   } catch (error) {
-    if (retryCount < 2 && /Timeout|429/.test(error.message || "")) {
-      await sleep(1000 * (retryCount + 1));
+    const message = String(error?.message || "");
+    if (isQuotaExceededError(message)) {
+      throw new Error("Gemini quota exceeded. Check plan/billing or reduce request volume.");
+    }
+    if (retryCount < 2 && isRetriableGeminiError(message)) {
+      const backoffMs = 1500 * 2 ** retryCount;
+      await sleep(backoffMs);
       return evaluateResumeOnly(jobDescription, resumeText, retryCount + 1);
     }
     throw error;
@@ -196,13 +244,13 @@ Return JSON only:
 export const evaluateResumeWithJD = async (
   jobDescription,
   resumeText,
-  Demo_Video_Link,
+  Video,
 ) => {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error("GEMINI_API_KEY missing in .env");
   }
 
-  if (!resumeText && !Demo_Video_Link) {
+  if (!resumeText && !Video) {
     return {
       score: 0,
       reason: "No resume or video data provided.",
@@ -215,8 +263,8 @@ export const evaluateResumeWithJD = async (
         console.error("Resume scoring failed:", error.message);
         return { score: 0, reason: "Resume scoring unavailable." };
       }),
-      Demo_Video_Link
-        ? getAudioScoreFromDriveLink(Demo_Video_Link).catch((error) => {
+      Video
+        ? getAudioScoreFromDriveLink(Video).catch((error) => {
             console.error("Audio scoring failed:", error.message);
             return { score: 0, reason: "" };
           })

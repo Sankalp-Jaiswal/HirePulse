@@ -42,7 +42,7 @@ const ExcelUpload = ({ jd, setCandidates }) => {
   const navigate = useNavigate();
   const [file, setFile] = useState(null);
   const [sheetLink, setSheetLink] = useState(
-    "https://docs.google.com/spreadsheets/d/1Ple4GoCGH9dQN7Xx9WAewaFN2G1eNrml4rTVnnGHU38/edit?usp=sharing",
+    " ",
   );
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);

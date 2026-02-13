@@ -6,6 +6,35 @@ import { rankCandidates } from "../services/ranking.service.js";
 
 const CANDIDATE_PREP_CONCURRENCY = Number(process.env.CANDIDATE_PREP_CONCURRENCY || 4);
 
+const isPdfBuffer = (buffer) =>
+  Buffer.isBuffer(buffer) &&
+  buffer.length >= 4 &&
+  buffer.slice(0, 4).toString("ascii") === "%PDF";
+
+const isZipBuffer = (buffer) =>
+  Buffer.isBuffer(buffer) &&
+  buffer.length >= 4 &&
+  buffer[0] === 0x50 &&
+  buffer[1] === 0x4b &&
+  buffer[2] === 0x03 &&
+  buffer[3] === 0x04;
+
+const isSupportedResumePayload = (contentType, buffer) => {
+  const ct = (contentType || "").toLowerCase();
+  if (
+    ct.includes("pdf") ||
+    ct.includes("officedocument") ||
+    ct.includes("msword") ||
+    ct.includes("word") ||
+    ct.includes("octet-stream")
+  ) {
+    return true;
+  }
+
+  // Some hosts return incorrect content-type; fall back to file signatures.
+  return isPdfBuffer(buffer) || isZipBuffer(buffer);
+};
+
 const mapWithConcurrency = async (items, limit, mapper) => {
   const results = new Array(items.length);
   let nextIndex = 0;
@@ -36,27 +65,25 @@ export const rankCandidatesController = async (req, res) => {
   }
 
   await mapWithConcurrency(candidates, CANDIDATE_PREP_CONCURRENCY, async (c, index) => {
-    const candidateLabel = c.Name || c.Email || c.Resume_Link || `candidate_${index + 1}`;
+    const candidateLabel = c.Name || c.Email || c.Resume || `candidate_${index + 1}`;
     c.resumeText = "";
 
-    if (!c.Resume_Link) {
-      console.log(`[Resume] [${candidateLabel}] Missing Resume_Link; skipping parse.`);
+    if (!c.Resume) {
+      console.log(`[Resume] [${candidateLabel}] Missing Resume; skipping parse.`);
       return;
     }
 
     try {
-      const { buffer, contentType } = await fetchResume(c.Resume_Link);
-      const ct = (contentType || "").toLowerCase();
-      if (
-        ct.includes("pdf") ||
-        ct.includes("officedocument") ||
-        ct.includes("msword") ||
-        ct.includes("word") ||
-        ct.includes("octet-stream")
-      ) {
+      const { buffer, contentType, finalUrl } = await fetchResume(c.Resume);
+      if (isSupportedResumePayload(contentType, buffer)) {
         c.resumeText = await extractText(buffer);
       } else {
-        console.log(`[Resume] [${candidateLabel}] Unsupported content-type:`, contentType);
+        console.log(
+          `[Resume] [${candidateLabel}] Unsupported content-type:`,
+          contentType,
+          "| URL:",
+          finalUrl || c.Resume,
+        );
       }
     } catch (err) {
       console.error(`[Resume] [${candidateLabel}] Parse failed:`, err.message);
